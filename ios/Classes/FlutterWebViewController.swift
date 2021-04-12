@@ -62,6 +62,7 @@ public class FlutterWebViewController: FlutterMethodCallDelegate, FlutterPlatfor
 
         webView!.options = options
         webView!.prepare()
+        webView!.windowCreated = true
         
         if windowId == nil {
             if #available(iOS 11.0, *) {

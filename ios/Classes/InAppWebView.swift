@@ -842,6 +842,7 @@ public class WebViewTransport: NSObject {
 public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate, WKNavigationDelegate, WKScriptMessageHandler, UIGestureRecognizerDelegate {
 
     var windowId: Int64?
+    var windowCreated = false
     var IABController: InAppBrowserWebViewController?
     var channel: FlutterMethodChannel?
     var options: InAppWebViewOptions?
@@ -1878,6 +1879,12 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate, WKNavi
                  decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         
+        
+        if windowId != nil, !windowCreated {
+            decisionHandler(.cancel)
+            return
+        }
+        
         if let url = navigationAction.request.url {
             
             if activateShouldOverrideUrlLoading && (options?.useShouldOverrideUrlLoading)! {
@@ -2023,6 +2030,11 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate, WKNavi
     
     public func webView(_ webView: WKWebView, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         
+        if windowId != nil, !windowCreated {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+            return
+        }
+
         if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodHTTPBasic ||
             challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodDefault ||
             challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodHTTPDigest {
@@ -2033,6 +2045,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate, WKNavi
             onReceivedHttpAuthRequest(challenge: challenge, result: {(result) -> Void in
                 if result is FlutterError {
                     print((result as! FlutterError).message ?? "")
+                    completionHandler(.performDefaultHandling, nil)
                 }
                 else if (result as? NSObject) == FlutterMethodNotImplemented {
                     completionHandler(.performDefaultHandling, nil)
@@ -2102,6 +2115,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate, WKNavi
             onReceivedServerTrustAuthRequest(challenge: challenge, result: {(result) -> Void in
                 if result is FlutterError {
                     print((result as! FlutterError).message ?? "")
+                    completionHandler(.performDefaultHandling, nil)
                 }
                 else if (result as? NSObject) == FlutterMethodNotImplemented {
                     completionHandler(.performDefaultHandling, nil)
@@ -2137,6 +2151,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate, WKNavi
             onReceivedClientCertRequest(challenge: challenge, result: {(result) -> Void in
                 if result is FlutterError {
                     print((result as! FlutterError).message ?? "")
+                    completionHandler(.performDefaultHandling, nil)
                 }
                 else if (result as? NSObject) == FlutterMethodNotImplemented {
                     completionHandler(.performDefaultHandling, nil)
@@ -2254,6 +2269,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate, WKNavi
         onJsAlert(frame: frame, message: message, result: {(result) -> Void in
             if result is FlutterError {
                 print((result as! FlutterError).message ?? "")
+                completionHandler()
             }
             else if (result as? NSObject) == FlutterMethodNotImplemented {
                 self.createAlertDialog(message: message, responseMessage: nil, confirmButtonTitle: nil, completionHandler: completionHandler)
@@ -2312,6 +2328,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate, WKNavi
         onJsConfirm(frame: frame, message: message, result: {(result) -> Void in
             if result is FlutterError {
                 print((result as! FlutterError).message ?? "")
+                completionHandler(false)
             }
             else if (result as? NSObject) == FlutterMethodNotImplemented {
                 self.createConfirmDialog(message: message, responseMessage: nil, confirmButtonTitle: nil, cancelButtonTitle: nil, completionHandler: completionHandler)
@@ -2384,6 +2401,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate, WKNavi
         onJsPrompt(frame: frame, message: message, defaultValue: defaultValue, result: {(result) -> Void in
             if result is FlutterError {
                 print((result as! FlutterError).message ?? "")
+                completionHandler(nil)
             }
             else if (result as? NSObject) == FlutterMethodNotImplemented {
                 self.createPromptDialog(message: message, defaultValue: defaultValue, responseMessage: nil, confirmButtonTitle: nil, cancelButtonTitle: nil, value: nil, completionHandler: completionHandler)
